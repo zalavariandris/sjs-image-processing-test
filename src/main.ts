@@ -1,8 +1,7 @@
 import S from "s-js"
 import createElement from "./createElement.ts"
 import type {Props} from "./createElement.ts"
-
-window.S = S;
+import {Image} from "image-js"
 
 function isSignal(s:any){
   return typeof(s) == "function";
@@ -30,36 +29,62 @@ let name = S.data("world");
 
 let noise_width = S.value(64);
 let noise_height= S.value(64);
+let blur_radius = S.value(16);
+let blur_sigma = S.value(5);
 
-type Image = {
+type ImageType = {
   width: number;
   height: number;
-  data: Float32Array
+  data: Uint8ClampedArray
 };
 
-function noise(width:number=64, height:number=64):Image{
-  // Create a Float32Array to hold pixel data (4 floats per pixel: R, G, B, A)
-  const floatImageData = new Float32Array(width * height * 4);
+function noise(width:number=64, height:number=64):ImageType{
+  // Create a imgDataArray to hold pixel data (4 floats per pixel: R, G, B, A)
+  const imgDataArray = new Uint8ClampedArray(width * height * 4);
 
-  // Fill the Float32Array with random values between 0 and 1
-  for (let i = 0; i < floatImageData.length; i += 4) {
-      floatImageData[i] = Math.random();     // Red (0 to 1)
-      floatImageData[i + 1] = Math.random(); // Green (0 to 1)
-      floatImageData[i + 2] = Math.random(); // Blue (0 to 1)
-      floatImageData[i + 3] = 1.0;           // Alpha (1.0 fully opaque)
+  // Fill the imgData with random values between 0 and 1
+  for (let i = 0; i < imgDataArray.length; i += 4) {
+      imgDataArray[i] = Math.random();     // Red (0 to 1)
+      imgDataArray[i + 1] = Math.random(); // Green (0 to 1)
+      imgDataArray[i + 2] = Math.random(); // Blue (0 to 1)
+      imgDataArray[i + 3] = 1.0;           // Alpha (1.0 fully opaque)
   }
   return {
     width: width,
     height: height,
-    data: floatImageData
+    data: imgDataArray
+  };
+}
+
+function blur(radius:number, sigma:number, input: ImageType):ImageType{
+  let img = new Image(input.width, input.height, input.data, { 
+    kind: 'RGBA',  // or 'RGB', 'RGBA', etc., depending on your data
+    bitDepth: 8   // Indicates image bit depth
+  });
+
+  // Apply Gaussian filter
+  img = img.gaussianFilter({
+    radius: radius,
+    sigma: sigma,
+    channels: undefined, // Apply to all channels by default
+    border: "copy"
+  });
+
+  // Convert Uint8Array data back to Float32Array, if required
+  const imgData = new Uint8ClampedArray(img.data);
+
+  // Return the blurred image as ImageType
+  return {
+    width: img.width,
+    height: img.height,
+    data: imgData
   };
 }
 
 
 
 S.root(() => {
-  console.log("run root")
-  window.name = name;
+  console.log("RUN ROOT");
   const root = h("div", {}, [
     h("input", {
       type: "text",
@@ -68,6 +93,7 @@ S.root(() => {
       }
     }),
     h("div", {id:"textbox"}),
+
     h("input", {
       type: "range",
       min: "1", max: "512",
@@ -80,6 +106,20 @@ S.root(() => {
       min: "1", max: "512",
       oninput: e=>{
         noise_height(parseInt(e.target.value));
+      }
+    }),
+    h("input", {
+      type: "range",
+      min: "0", max: "64",
+      oninput: e=>{
+        blur_radius(parseInt(e.target.value));
+      }
+    }),
+    h("input", {
+      type: "range",
+      min: "0", max: "64",
+      oninput: e=>{
+        blur_sigma(parseInt(e.target.value));
       }
     }),
     h("br"),
@@ -100,7 +140,9 @@ S.root(() => {
 
   S(()=>{
     // Preview image
-    const img = noise(noise_width(), noise_height()); // make image
+    const img = blur(blur_radius(),blur_sigma(),
+      noise(noise_width(), noise_height())
+    ); // make image
 
     // preview image on canvas
     const canvas:(HTMLCanvasElement|null) = document.getElementById("viewport");
