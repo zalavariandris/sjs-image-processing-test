@@ -1,8 +1,32 @@
 import S from "s-js"
-import h from "./createElement.ts"
+import createElement from "./createElement.ts"
+import type {Props} from "./createElement.ts"
+
+window.S = S;
+
+function isSignal(s:any){
+  return typeof(s) == "function";
+}
+
+
+function h(
+	tag: string,
+	props: Props = {},
+	children: (HTMLElement | string)[] = []
+): HTMLElement {
+  Object.entries(props).forEach(([k, v])=>{
+    console.group(k)
+    console.log(v, isSignal(v));
+    console.groupEnd()
+  })
+  return createElement(tag, props, children);
+}
+
+
 
 let greeting = S.data("Hello");
 let name = S.data("world");
+
 
 let noise_width = S.value(64);
 let noise_height= S.value(64);
@@ -35,6 +59,7 @@ function noise(width:number=64, height:number=64):Image{
 
 S.root(() => {
   console.log("run root")
+  window.name = name;
   const root = h("div", {}, [
     h("input", {
       type: "text",

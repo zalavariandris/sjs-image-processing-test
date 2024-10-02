@@ -48,3 +48,4 @@ function createElement(
 }
 
 export default createElement;
+export type {Props};
